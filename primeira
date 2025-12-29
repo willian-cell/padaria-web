@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Padaria - Controle de Estoque e Contábil</title>
+  <link rel="stylesheet" href="styles.css"/>
+
+  <!-- Excel (SheetJS) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+  <!-- PDF (jsPDF + AutoTable) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Padaria</h1>
+      <p class="muted">Entradas, Saídas, Estoque, Relatórios (PDF/Excel)</p>
+    </div>
+
+    <div class="api-box">
+      <label>API Base URL</label>
+      <input id="apiBase" type="text" placeholder="Cole a URL do Render aqui" />
+      <button id="btnSaveApi" class="btn">Salvar</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="grid">
+      <!-- CADASTRO PRODUTO -->
+      <div class="card">
+        <h2>Cadastro de Produto</h2>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Nome</label>
+            <input id="p_nome" type="text" placeholder="Ex: Bolo de Chocolate"/>
+          </div>
+
+          <div class="field">
+            <label>Categoria</label>
+            <input id="p_categoria" type="text" placeholder="Ex: Confeitaria"/>
+          </div>
+
+          <div class="field">
+            <label>Unidade</label>
+            <select id="p_unidade">
+              <option value="un">un</option>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="pct">pct</option>
+              <option value="cx">cx</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Custo Unit. (R$)</label>
+            <input id="p_custo" type="number" step="0.01" min="0" />
+          </div>
+
+          <div class="field">
+            <label>Preço Venda (R$)</label>
+            <input id="p_preco" type="number" step="0.01" min="0" />
+          </div>
+
+          <div class="field">
+            <label>Estoque Mín.</label>
+            <input id="p_min" type="number" step="1" min="0" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="btnAddProduto" class="btn btn-primary">Cadastrar Produto</button>
+          <button id="btnReload" class="btn">Recarregar</button>
+        </div>
+
+        <hr/>
+
+        <h3>Produtos</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Un</th>
+                <th>Custo</th>
+                <th>Preço</th>
+                <th>Mín</th>
+              </tr>
+            </thead>
+            <tbody id="produtosBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MOVIMENTAÇÕES -->
+      <div class="card">
+        <h2>Movimentação</h2>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Tipo</label>
+            <select id="m_tipo">
+              <option value="ENTRADA">ENTRADA</option>
+              <option value="SAIDA">SAIDA</option>
+              <option value="PERDA">PERDA</option>
+              <option value="AJUSTE">AJUSTE</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Produto</label>
+            <select id="m_produto"></select>
+          </div>
+
+          <div class="field">
+            <label>Quantidade</label>
+            <input id="m_qtd" type="number" step="0.01" min="0" />
+          </div>
+
+          <div class="field">
+            <label>Valor Unit. (R$)</label>
+            <input id="m_valor" type="number" step="0.01" min="0" />
+          </div>
+
+          <div class="field">
+            <label>Desconto (R$)</label>
+            <input id="m_desc" type="number" step="0.01" min="0" value="0"/>
+          </div>
+
+          <div class="field">
+            <label>Origem/Canal</label>
+            <input id="m_origem" type="text" placeholder="Ex: Balcão / iFood / Fornecedor X"/>
+          </div>
+
+          <div class="field">
+            <label>Data/Hora</label>
+            <input id="m_datahora" type="datetime-local"/>
+          </div>
+
+          <div class="field">
+            <label>Obs.</label>
+            <input id="m_obs" type="text" placeholder="Opcional"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="btnAddMov" class="btn btn-primary">Registrar</button>
+          <button id="btnAutoValor" class="btn">Auto Valor</button>
+        </div>
+
+        <hr/>
+
+        <h3>Filtros</h3>
+        <div class="filters">
+          <div class="field">
+            <label>Data início</label>
+            <input id="f_inicio" type="date"/>
+          </div>
+          <div class="field">
+            <label>Data fim</label>
+            <input id="f_fim" type="date"/>
+          </div>
+          <div class="field">
+            <label>Produto (contém)</label>
+            <input id="f_produto" type="text" placeholder="Ex: pão"/>
+          </div>
+          <div class="field">
+            <label>Tipo</label>
+            <select id="f_tipo">
+              <option value="">TODOS</option>
+              <option value="ENTRADA">ENTRADA</option>
+              <option value="SAIDA">SAIDA</option>
+              <option value="PERDA">PERDA</option>
+              <option value="AJUSTE">AJUSTE</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button id="btnAplicarFiltros" class="btn">Aplicar</button>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="row">
+          <button id="btnExcel" class="btn">Exportar Excel</button>
+          <button id="btnPDF" class="btn">Exportar PDF</button>
+        </div>
+
+        <h3>Movimentações (filtradas)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Tipo</th>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>V.Unit</th>
+                <th>Desc</th>
+                <th>Total</th>
+                <th>Origem</th>
+              </tr>
+            </thead>
+            <tbody id="movBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESTOQUE -->
+    <section class="card">
+      <h2>Estoque Atual (calculado)</h2>
+      <p class="muted">Cálculo: Entradas + Ajustes - Saídas - Perdas</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Categoria</th>
+              <th>Un</th>
+              <th>Estoque</th>
+              <th>Mín</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="estoqueBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="muted">Padaria App — HTML/CSS/JS + JSON API</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
