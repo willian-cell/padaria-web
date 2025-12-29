@@ -68,7 +68,6 @@
             <label>Estoque Mín.</label>
             <input id="p_min" type="number" step="1" min="0" />
           </div>
-        </div>
 
         <div class="row">
           <button id="btnAddProduto" class="btn btn-primary">Cadastrar Produto</button>
@@ -88,6 +87,7 @@
                 <th>Custo</th>
                 <th>Preço</th>
                 <th>Mín</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody id="produtosBody"></tbody>
@@ -203,6 +203,7 @@
                 <th>Desc</th>
                 <th>Total</th>
                 <th>Origem</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody id="movBody"></tbody>
@@ -238,6 +239,147 @@
     <span class="muted">Padaria 
     União - Siste criado por WBO TECNOLOGIA</span>
   </footer>
+
+
+<!-- MODAL: EDITAR PRODUTO -->
+<div id="modalProduto" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close="modalProduto"></div>
+
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Editar Produto</h3>
+      <button class="icon-btn" data-close="modalProduto">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <input type="hidden" id="ep_id"/>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Nome</label>
+          <input id="ep_nome" type="text"/>
+        </div>
+
+        <div class="field">
+          <label>Categoria</label>
+          <input id="ep_categoria" type="text"/>
+        </div>
+
+        <div class="field">
+          <label>Unidade</label>
+          <select id="ep_unidade">
+            <option value="un">un</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="pct">pct</option>
+            <option value="cx">cx</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Custo Unit. (R$)</label>
+          <input id="ep_custo" type="number" step="0.01" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Preço Venda (R$)</label>
+          <input id="ep_preco" type="number" step="0.01" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Estoque Mín.</label>
+          <input id="ep_min" type="number" step="1" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Ativo</label>
+          <select id="ep_ativo">
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="btnDelProduto" class="btn danger">Excluir</button>
+      <div class="spacer"></div>
+      <button class="btn" data-close="modalProduto">Cancelar</button>
+      <button id="btnSaveProduto" class="btn btn-primary">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR MOVIMENTAÇÃO -->
+<div id="modalMov" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close="modalMov"></div>
+
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Editar Movimentação</h3>
+      <button class="icon-btn" data-close="modalMov">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <input type="hidden" id="em_id"/>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Tipo</label>
+          <select id="em_tipo">
+            <option value="ENTRADA">ENTRADA</option>
+            <option value="SAIDA">SAIDA</option>
+            <option value="PERDA">PERDA</option>
+            <option value="AJUSTE">AJUSTE</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Produto</label>
+          <select id="em_produto"></select>
+        </div>
+
+        <div class="field">
+          <label>Quantidade</label>
+          <input id="em_qtd" type="number" step="0.01" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Valor Unit. (R$)</label>
+          <input id="em_valor" type="number" step="0.01" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Desconto (R$)</label>
+          <input id="em_desc" type="number" step="0.01" min="0"/>
+        </div>
+
+        <div class="field">
+          <label>Origem/Canal</label>
+          <input id="em_origem" type="text"/>
+        </div>
+
+        <div class="field">
+          <label>Data/Hora</label>
+          <input id="em_datahora" type="datetime-local"/>
+        </div>
+
+        <div class="field">
+          <label>Obs.</label>
+          <input id="em_obs" type="text"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="btnDelMov" class="btn danger">Excluir</button>
+      <div class="spacer"></div>
+      <button class="btn" data-close="modalMov">Cancelar</button>
+      <button id="btnSaveMov" class="btn btn-primary">Salvar</button>
+    </div>
+  </div>
+</div>
+  
 
   <script src="app.js"></script>
 </body>
