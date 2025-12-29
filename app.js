@@ -38,6 +38,22 @@ async function apiPost(path, body){
   return r.json();
 }
 
+async function apiPatch(path, body){
+  const r = await fetch(apiUrl(path), {
+    method: "PATCH",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(`PATCH ${path} falhou: ${r.status}`);
+  return r.json();
+}
+
+async function apiDelete(path){
+  const r = await fetch(apiUrl(path), { method: "DELETE" });
+  if(!r.ok) throw new Error(`DELETE ${path} falhou: ${r.status}`);
+  return true;
+}
+
 // =============================
 // STATE
 // =============================
@@ -226,6 +242,12 @@ function renderProdutos(){
         <td>${moeda(p.custo_unit)}</td>
         <td>${moeda(p.preco_venda)}</td>
         <td>${num(p.estoque_min)}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="abrirEditarProduto('${p.id}')">Editar</button>
+            <button class="btn danger" onclick="excluirProdutoDireto('${p.id}')">Excluir</button>
+          </div>
+        </td>
       </tr>
     `).join("");
 }
@@ -238,6 +260,20 @@ function renderProdutosSelect(){
     .join("");
   m_produto.innerHTML = opts || `<option value="">Sem produtos</option>`;
 }
+
+
+function openModal(id){
+  document.getElementById(id).classList.remove("hidden");
+}
+function closeModal(id){
+  document.getElementById(id).classList.add("hidden");
+}
+document.addEventListener("click", (e) => {
+  const closeId = e.target?.getAttribute?.("data-close");
+  if(closeId) closeModal(closeId);
+});
+
+
 
 // =============================
 // MOVIMENTAÇÕES (CREATE)
@@ -351,9 +387,16 @@ function renderMovTable(){
         <td>${moeda(m.desconto)}</td>
         <td>${moeda(totalMov(m))}</td>
         <td>${escapeHtml(m.origem || "")}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="abrirEditarMov('${m.id}')">Editar</button>
+            <button class="btn danger" onclick="excluirMovDireto('${m.id}')">Excluir</button>
+          </div>
+        </td>
       </tr>
     `).join("");
 }
+
 
 function renderKPIs(){
   const inicio = f_inicio.value || dateOnlyISO(new Date().toISOString());
@@ -575,6 +618,217 @@ function escapeHtml(str){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+
+// ===== MODAL PRODUTO =====
+const ep_id = document.getElementById("ep_id");
+const ep_nome = document.getElementById("ep_nome");
+const ep_categoria = document.getElementById("ep_categoria");
+const ep_unidade = document.getElementById("ep_unidade");
+const ep_custo = document.getElementById("ep_custo");
+const ep_preco = document.getElementById("ep_preco");
+const ep_min = document.getElementById("ep_min");
+const ep_ativo = document.getElementById("ep_ativo");
+
+const btnSaveProduto = document.getElementById("btnSaveProduto");
+const btnDelProduto = document.getElementById("btnDelProduto");
+
+// expõe para onclick inline
+window.abrirEditarProduto = (id) => {
+  const p = produtos.find(x => x.id === id);
+  if(!p) return alert("Produto não encontrado.");
+
+  ep_id.value = p.id;
+  ep_nome.value = p.nome || "";
+  ep_categoria.value = p.categoria || "";
+  ep_unidade.value = p.unidade || "un";
+  ep_custo.value = num(p.custo_unit);
+  ep_preco.value = num(p.preco_venda);
+  ep_min.value = num(p.estoque_min);
+  ep_ativo.value = String(!!p.ativo);
+
+  openModal("modalProduto");
+};
+
+btnSaveProduto.addEventListener("click", async () => {
+  try{
+    const id = ep_id.value;
+    if(!id) return;
+
+    const payload = {
+      nome: (ep_nome.value || "").trim(),
+      categoria: (ep_categoria.value || "").trim(),
+      unidade: ep_unidade.value,
+      custo_unit: num(ep_custo.value),
+      preco_venda: num(ep_preco.value),
+      estoque_min: num(ep_min.value),
+      ativo: ep_ativo.value === "true"
+    };
+
+    if(!payload.nome) return alert("Nome do produto é obrigatório.");
+
+    await apiPatch(`/produtos/${id}`, payload);
+    await loadAll();
+
+    renderProdutos();
+    renderProdutosSelect();
+    aplicarFiltros();
+    renderEstoque();
+
+    closeModal("modalProduto");
+    alert("Produto atualizado.");
+  }catch(e){
+    alert(e.message);
+  }
+});
+
+btnDelProduto.addEventListener("click", async () => {
+  try{
+    const id = ep_id.value;
+    if(!id) return;
+
+    // Proteção: impedir excluir se houver movimentações
+    const temMov = movimentacoes.some(m => m.produto_id === id);
+    if(temMov){
+      return alert("Este produto possui movimentações. Para manter histórico, não é recomendado excluir. Inative o produto (Ativo = Não).");
+    }
+
+    const ok = confirm("Excluir produto definitivamente?");
+    if(!ok) return;
+
+    await apiDelete(`/produtos/${id}`);
+    await loadAll();
+
+    renderProdutos();
+    renderProdutosSelect();
+    aplicarFiltros();
+    renderEstoque();
+
+    closeModal("modalProduto");
+    alert("Produto excluído.");
+  }catch(e){
+    alert(e.message);
+  }
+});
+
+// Excluir direto na tabela (sem modal)
+window.excluirProdutoDireto = (id) => {
+  const p = produtos.find(x => x.id === id);
+  if(!p) return;
+  // abre modal para decidir (mais seguro)
+  window.abrirEditarProduto(id);
+};
+
+// ===== MODAL MOVIMENTAÇÃO =====
+const em_id = document.getElementById("em_id");
+const em_tipo = document.getElementById("em_tipo");
+const em_produto = document.getElementById("em_produto");
+const em_qtd = document.getElementById("em_qtd");
+const em_valor = document.getElementById("em_valor");
+const em_desc = document.getElementById("em_desc");
+const em_origem = document.getElementById("em_origem");
+const em_datahora = document.getElementById("em_datahora");
+const em_obs = document.getElementById("em_obs");
+
+const btnSaveMov = document.getElementById("btnSaveMov");
+const btnDelMov = document.getElementById("btnDelMov");
+
+function renderProdutosSelectModalMov(){
+  const opts = produtos
+    .slice()
+    .sort((a,b) => (a.nome || "").localeCompare(b.nome || ""))
+    .map(p => `<option value="${p.id}">${escapeHtml(p.nome)} (${escapeHtml(p.unidade)})</option>`)
+    .join("");
+  em_produto.innerHTML = opts || `<option value="">Sem produtos</option>`;
+}
+
+function toDatetimeLocalFromISO(iso){
+  const d = new Date(iso);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+
+window.abrirEditarMov = (id) => {
+  const m = movimentacoes.find(x => x.id === id);
+  if(!m) return alert("Movimentação não encontrada.");
+
+  renderProdutosSelectModalMov();
+
+  em_id.value = m.id;
+  em_tipo.value = m.tipo || "ENTRADA";
+  em_produto.value = m.produto_id || "";
+  em_qtd.value = num(m.quantidade);
+  em_valor.value = num(m.valor_unit);
+  em_desc.value = num(m.desconto);
+  em_origem.value = m.origem || "";
+  em_obs.value = m.observacao || "";
+  em_datahora.value = toDatetimeLocalFromISO(m.data_hora);
+
+  openModal("modalMov");
+};
+
+btnSaveMov.addEventListener("click", async () => {
+  try{
+    const id = em_id.value;
+    if(!id) return;
+
+    const pid = em_produto.value;
+    const p = produtos.find(x => x.id === pid);
+    if(!p) return alert("Selecione um produto.");
+
+    const payload = {
+      tipo: em_tipo.value,
+      produto_id: p.id,
+      produto_nome_snapshot: p.nome, // mantém histórico coerente após edição
+      quantidade: num(em_qtd.value),
+      valor_unit: num(em_valor.value),
+      desconto: num(em_desc.value),
+      origem: (em_origem.value || "").trim(),
+      observacao: (em_obs.value || "").trim(),
+      data_hora: isoFromDatetimeLocal(em_datahora.value)
+    };
+
+    if(payload.quantidade <= 0) return alert("Quantidade deve ser maior que zero.");
+    if(payload.valor_unit <= 0) return alert("Valor unitário deve ser maior que zero.");
+
+    await apiPatch(`/movimentacoes/${id}`, payload);
+    await loadAll();
+
+    aplicarFiltros();
+    renderEstoque();
+
+    closeModal("modalMov");
+    alert("Movimentação atualizada.");
+  }catch(e){
+    alert(e.message);
+  }
+});
+
+btnDelMov.addEventListener("click", async () => {
+  try{
+    const id = em_id.value;
+    if(!id) return;
+
+    const ok = confirm("Excluir movimentação definitivamente?");
+    if(!ok) return;
+
+    await apiDelete(`/movimentacoes/${id}`);
+    await loadAll();
+
+    aplicarFiltros();
+    renderEstoque();
+
+    closeModal("modalMov");
+    alert("Movimentação excluída.");
+  }catch(e){
+    alert(e.message);
+  }
+});
+
+// Excluir direto na tabela: abre modal (mais seguro)
+window.excluirMovDireto = (id) => {
+  window.abrirEditarMov(id);
+};
+               
 
 // Inicia
 bootstrap();
